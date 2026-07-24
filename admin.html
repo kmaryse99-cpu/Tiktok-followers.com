@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - Inscriptions</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f2f4f8;
+    min-height: 100vh;
+  }
+  .center {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 30px 25px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  }
+  h1 { font-size: 20px; color: #1e3c72; margin: 0 0 20px; text-align: center; }
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+  }
+  button {
+    width: 100%;
+    margin-top: 16px;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    background: #2a5298;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #err { color: #c0392b; text-align: center; margin-top: 10px; font-size: 14px; }
+
+  header {
+    background: #1e3c72;
+    color: #fff;
+    padding: 16px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header h2 { margin: 0; font-size: 17px; }
+  header button {
+    width: auto;
+    margin: 0;
+    padding: 8px 14px;
+    font-size: 13px;
+    background: rgba(255,255,255,0.15);
+  }
+  #list { padding: 14px; }
+  .entry {
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .entry .row { font-size: 14px; margin: 4px 0; }
+  .entry .row b { color: #2a5298; display: inline-block; min-width: 90px; }
+  .entry .date { font-size: 12px; color: #999; margin-top: 8px; }
+  #count { font-size: 13px; color: #666; padding: 0 14px 10px; }
+  #empty { text-align: center; color: #999; padding: 40px 20px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="center" id="loginScreen">
+  <div class="card">
+    <h1>🔒 Accès Admin</h1>
+    <input type="password" id="pwd" placeholder="Mot de passe">
+    <button id="loginBtn">Se connecter</button>
+    <div id="err"></div>
+  </div>
+</div>
+
+<div id="dashboard" class="hidden">
+  <header>
+    <h2>📋 Inscriptions</h2>
+    <button id="logoutBtn">Déconnexion</button>
+  </header>
+  <div id="count"></div>
+  <div id="list"></div>
+  <div id="empty" class="hidden">Aucune inscription pour le moment.</div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // 🔽 REMPLACE PAR TA CONFIG FIREBASE (la même que dans formulaire.html) 🔽
+  const firebaseConfig = {
+    apiKey: "AIzaSyDwn-uFh3I2EuCBXkgcAbs1BP-ftvAWQLc",
+    authDomain: "tkfollow.firebaseapp.com",
+    projectId: "tkfollow",
+    storageBucket: "tkfollow.firebasestorage.app",
+    messagingSenderId: "1047183542684",
+    appId: "1:1047183542684:web:c50f5f926f34153b4d6059"
+  };
+  // 🔼 REMPLACE PAR TA CONFIG FIREBASE 🔼
+
+  // 🔽 CHANGE CE MOT DE PASSE 🔽
+  const ADMIN_PASSWORD = "even820895";
+  // 🔼 CHANGE CE MOT DE PASSE 🔼
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const loginScreen = document.getElementById('loginScreen');
+  const dashboard = document.getElementById('dashboard');
+  const pwdInput = document.getElementById('pwd');
+  const err = document.getElementById('err');
+  const list = document.getElementById('list');
+  const countEl = document.getElementById('count');
+  const emptyEl = document.getElementById('empty');
+
+  function checkSession() {
+    if (sessionStorage.getItem('adminOk') === 'yes') {
+      showDashboard();
+    }
+  }
+
+  document.getElementById('loginBtn').addEventListener('click', () => {
+    if (pwdInput.value === ADMIN_PASSWORD) {
+      sessionStorage.setItem('adminOk', 'yes');
+      showDashboard();
+    } else {
+      err.textContent = "Mot de passe incorrect.";
+    }
+  });
+
+  pwdInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('loginBtn').click();
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    sessionStorage.removeItem('adminOk');
+    dashboard.classList.add('hidden');
+    loginScreen.classList.remove('hidden');
+  });
+
+  function showDashboard() {
+    loginScreen.classList.add('hidden');
+    dashboard.classList.remove('hidden');
+    loadData();
+  }
+
+  function loadData() {
+    const q = query(collection(db, "inscriptions"), orderBy("date", "desc"));
+    onSnapshot(q, (snapshot) => {
+      list.innerHTML = "";
+      countEl.textContent = snapshot.size + " inscription(s)";
+      if (snapshot.empty) {
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+      emptyEl.classList.add('hidden');
+      snapshot.forEach((doc) => {
+        const d = doc.data();
+        const dateStr = d.date ? new Date(d.date.seconds * 1000).toLocaleString('fr-FR') : '—';
+        const div = document.createElement('div');
+        div.className = 'entry';
+        div.innerHTML = `
+          <div class="row"><b>Nom :</b> ${escapeHtml(d.nom || '')}</div>
+          <div class="row"><b>Email :</b> ${escapeHtml(d.email || '')}</div>
+          <div class="row"><b>Numéro :</b> ${escapeHtml(d.numero || '')}</div>
+          <div class="row"><b>Pseudo :</b> ${escapeHtml(d.pseudo || '')}</div>
+          <div class="date">${dateStr}</div>
+        `;
+        list.appendChild(div);
+      });
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  checkSession();
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Formulaire d'inscription</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 30px 25px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 20px;
+    color: #1e3c72;
+    text-align: center;
+  }
+  label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 14px 0 6px;
+    color: #333;
+  }
+  input {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+  }
+  input:focus { border-color: #2a5298; }
+  button {
+    width: 100%;
+    margin-top: 22px;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: #2a5298;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.6; }
+  #msg {
+    text-align: center;
+    margin-top: 14px;
+    font-size: 14px;
+    min-height: 18px;
+  }
+  #msg.ok { color: #1a7a3c; }
+  #msg.err { color: #c0392b; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Formulaire d'inscription</h1>
+  <form id="form">
+    <label for="nom">Nom complet</label>
+    <input type="text" id="nom" required>
+
+    <label for="email">Email</label>
+    <input type="email" id="email" required>
+
+    <label for="numero">Numéro de téléphone</label>
+    <input type="tel" id="numero" required>
+
+    <label for="pseudo">Pseudo</label>
+    <input type="text" id="pseudo" required>
+
+    <button type="submit" id="btn">Envoyer</button>
+  </form>
+  <div id="msg"></div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // 🔽 REMPLACE PAR TA CONFIG FIREBASE 🔽
+  const firebaseConfig = {
+    apiKey: "AIzaSyDwn-uFh3I2EuCBXkgcAbs1BP-ftvAWQLc",
+    authDomain: "tkfollow.firebaseapp.com",
+    projectId: "tkfollow",
+    storageBucket: "tkfollow.firebasestorage.app",
+    messagingSenderId: "1047183542684",
+    appId: "1:1047183542684:web:c50f5f926f34153b4d6059"
+  };
+  // 🔼 REMPLACE PAR TA CONFIG FIREBASE 🔼
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const form = document.getElementById('form');
+  const msg = document.getElementById('msg');
+  const btn = document.getElementById('btn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    msg.textContent = "Envoi en cours...";
+    msg.className = "";
+
+    const data = {
+      nom: document.getElementById('nom').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      numero: document.getElementById('numero').value.trim(),
+      pseudo: document.getElementById('pseudo').value.trim(),
+      date: serverTimestamp()
+    };
+
+    try {
+      await addDoc(collection(db, "inscriptions"), data);
+      msg.textContent = "✅ Envoyé avec succès !";
+      msg.className = "ok";
+      form.reset();
+    } catch (err) {
+      msg.textContent = "❌ Erreur : " + err.message;
+      msg.className = "err";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
